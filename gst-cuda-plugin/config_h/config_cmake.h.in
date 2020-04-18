@@ -1,0 +1,19 @@
+// this file is only parsed when using cmake
+// meson's template is in the meson.build using a dict
+// TODO(mdegans): figure out how to fix this
+#ifndef __CONFIG_CMAKE_H__
+#define __CONFIG_CMAKE_H__
+
+#pragma once
+
+#cmakedefine PACKAGE_VERSION "0.1"
+#cmakedefine PACKAGE "gstcudaplugin"
+#cmakedefine PACKAGE_AUTHOR "Michael de Gans"
+#cmakedefine PACKAGE_EMAIL "<michael.john.degans@gmail.com>"
+#cmakedefine GST_LICENSE "LGPL"
+#cmakedefine GST_API_VERSION "1.0"
+#cmakedefine GST_PACKAGE_NAME "GStreamer CUDA plugin"
+#cmakedefine GST_PACKAGE_ORIGIN "https://github.com/mdegans/gst-cuda-filter"
+#cmakedefine PACKAGE_DESCRIPTION GST_PACKAGE_NAME
+
+#endif // __CONFIG_CMAKE_H__
