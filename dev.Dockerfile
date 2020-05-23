@@ -1,4 +1,5 @@
 # This Dockerfile is for making rapid changes and testing
+# it copies the repo into the image
 
 # Copyright (C) 2020  Michael de Gans
 
@@ -17,35 +18,47 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 # USA
 
-FROM nvcr.io/nvidia/deepstream:4.0.2-19.12-devel
+FROM nvcr.io/nvidia/deepstream:5.0-dp-20.04-devel
 
 # install deps and create user
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-dev \
-    libgstreamer1.0-dev \
-    libgstreamer-plugins-base1.0-dev \
-    python3-pip \
-    python3-setuptools \
-    python3-wheel \
-    ninja-build \
+        git \
+        libglib2.0-dev \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+        ninja-build \
     && pip3 install meson \
-    && cp -R /root/deepstream_sdk_v4.0.2_x86_64/sources/ /opt/nvidia/deepstream/deepstream-4.0/ \
+    && apt-get purge -y --autoremove \
+        python3-pip \
+        python3-setuptools \
+        python3-wheel \
+    && chmod -R o-w /opt/nvidia/deepstream/deepstream-5.0/ \
     && useradd -md /var/test -rUs /bin/false test
+
+# fix ldconfig (dammit, Nvidia. testing testing testing!)
+RUN echo "/opt/nvidia/deepstream/deepstream/lib" > /etc/ld.so.conf.d/deepstream.conf \
+    && ldconfig
 
 # copy source
 WORKDIR /opt/gst-cuda-plugin/source
-COPY meson.build COPYING README ./
+COPY meson.build COPYING VERSION README.md ./
 COPY gst-cuda-plugin ./gst-cuda-plugin/
+COPY subprojects ./subprojects/
 
 # build and install
 RUN mkdir build \
     && cd build \
-    && meson .. \
+    && meson --prefix=/usr .. \
     && ninja \
-    && ninja install
+    && ninja test \
+    && ninja install \
+    && ldconfig
+# TODO(mdegans): put script to run ldconfig automatically and/or search/ask for advice on best practices
 
 # drop to user and run verbosely
 USER test:test
-ENV GST_DEBUG="5"
 ENV G_MESSAGES_DEBUG="all"
-ENTRYPOINT [ "gst-inspect-1.0", "--plugin", "/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0/libgstcudaplugin.so" ]
+ENTRYPOINT [ "gst-inspect-1.0" ]

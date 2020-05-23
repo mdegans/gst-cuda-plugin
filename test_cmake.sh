@@ -1,1 +1,0 @@
-docker build --rm -f "test_cmake.Dockerfile" -t gstcudaplugin:cmake "." 2>&1 | tee test_cmake.log && docker run -it --rm gstcudaplugin:cmake 2>&1 | tee -a test_cmake.log

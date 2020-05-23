@@ -1,1 +1,1 @@
-docker build --rm -f "test_meson.Dockerfile" -t gstcudaplugin:meson "." 2>&1 | tee test_meson.log && docker run -it --rm gstcudaplugin:meson 2>&1 | tee -a test_meson.log
+docker build --rm -f "dev.Dockerfile" -t mdegans/gstcudaplugin:latest "." 2>&1 | tee test_meson.log

@@ -1,13 +1,18 @@
 # source of truth for package info 
 # (changing these changes config_meson.h and many other things)
 project('gst-cuda-plugin', ['cpp'],
-  version : '0.1',
+  version: run_command(
+    'head', '-n', '1', files('VERSION'),
+  ).stdout().strip(),
+  meson_version: '>= 0.54.0',
   license : 'LGPL',
 )
+# include libdsfilter as a subproject,
+libdsfilter_proj = subproject('libdsfilter')
 gst_api_version = '1.0'
 package_name = 'gstcudaplugin'
-package_long_name = 'GStreamer CUDA plugin'
-package_description = package_long_name
+package_long_name = package_name + '-' + gst_api_version
+package_description = 'CUDA Plugin collection for GStreamer and DeepStream.'
 package_version = meson.project_version()
 package_author = 'Michael de Gans'
 package_email = 'michael.john.degans@gmail.com'

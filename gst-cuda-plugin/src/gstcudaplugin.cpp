@@ -19,30 +19,43 @@
  * Boston, MA 02111-1307, USA.
  */
 
+#include "gstcudaplugin.h"
 
 #include "config.h"
-
-#include "gstcudaplugin.h"
 #include "gstcudafilter.h"
+#include "gstcudahash.h"
+#include "gstdsdistance.h"
 
-
-static gboolean
-cudaplugin_init (GstPlugin * plugin)
-{
-	return gst_element_register(
-		plugin, g_type_name(GST_TYPE_CUDAFILTER), GST_RANK_NONE, GST_TYPE_CUDAFILTER);
+static gboolean cudaplugin_init(GstPlugin* plugin) {
+  if (!gst_element_register(plugin, "cudafilter", GST_RANK_NONE,
+                            GST_TYPE_CUDAFILTER)) {
+    GST_ERROR("could not register cudafilter");
+    return false;
+  };
+  if (!gst_element_register(plugin, "cudahash", GST_RANK_NONE,
+                            GST_TYPE_CUDAHASH)) {
+    GST_ERROR("could not register cudahash");
+    return false;
+  };
+  if (!gst_element_register(plugin, "dsdistance", GST_RANK_NONE,
+                            GST_TYPE_DSDISTANCE)) {
+    GST_ERROR("could not register dsdistance");
+    return false;
+  };
+  return true;
 }
 
-/* gstreamer looks for this structure to register the plugin
- */
-GST_PLUGIN_DEFINE (
-	GST_VERSION_MAJOR,
-	GST_VERSION_MINOR,
-	cudaplugin,
-	PACKAGE_DESCRIPTION,
-	cudaplugin_init,
-	PACKAGE_VERSION,
-	GST_LICENSE,
-	GST_PACKAGE_NAME,
-	GST_PACKAGE_ORIGIN
+/** gstreamer looks for this structure to register the plugin */
+// clang-format off
+GST_PLUGIN_DEFINE(
+  GST_VERSION_MAJOR,
+  GST_VERSION_MINOR,
+  cudaplugin,
+  PACKAGE_DESCRIPTION,
+  cudaplugin_init,
+  PACKAGE_VERSION,
+  GST_LICENSE,
+  GST_PACKAGE_NAME,
+  GST_PACKAGE_ORIGIN
 )
+// clang-format on

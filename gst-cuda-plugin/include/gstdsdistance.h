@@ -1,12 +1,13 @@
 /*
  * GStreamer
  * Copyright (C) 2006 Stefan Kost <ensonic@users.sf.net>
+ * Copyright (C) 2020 Niels De Graef <niels.degraef@gmail.com>
  * Copyright (C) 2020 Michael de Gans <michael.john.degans@gmail.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
  * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
+ * version 2 of the License, or (at your option) any later version.
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -19,18 +20,35 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef GST_CUDAPLUGIN_H__
-#define GST_CUDAPLUGIN_H__
+#ifndef GST_DSDISTANCE_H__
+#define GST_DSDISTANCE_H__
 
+#include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
+
+#include <DistanceFilter.hpp>
 
 G_BEGIN_DECLS
 
-/* entry point to initialize the plug-in
- * register the element factories and other features
- */
-static gboolean cudaplugin_init(GstPlugin* plugin);
+typedef DistanceFilter DistanceFilter;
+
+#define GST_TYPE_DSDISTANCE (gst_dsdistance_get_type())
+G_DECLARE_FINAL_TYPE(GstDsDistance,
+                     gst_dsdistance,
+                     GST,
+                     DSDISTANCE,
+                     GstBaseTransform)
+
+struct _GstDsDistance {
+  GstBaseTransform element;
+
+  // The distance calculating filter.
+  DistanceFilter* filter;
+
+  // properties:
+  gboolean silent;
+};
 
 G_END_DECLS
 
-#endif  // GST_CUDAPLUGIN_H__
+#endif /* GST_DSDISTANCE_H__ */

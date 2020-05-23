@@ -20,19 +20,19 @@
  */
 
 /**
- * SECTION:element-cudafilter
+ * SECTION:element-cudahash
  *
- * Cudafilter is an example CUDA filter for gstreamer.
+ * Cudahash is an image hashing filter for gstreamer using CUDA.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch -v -m nvarguscamerasrc ! cudafilter ! autovideosink
+ * gst-launch -v -m nvarguscamerasrc ! cudahash ! autovideosink
  * ]|
  * </refsect2>
  */
 
-#include "gstcudafilter.h"
+#include "gstcudahash.h"
 
 #include "TestCudaFilter.hpp"
 #include "config.h"
@@ -43,13 +43,13 @@
 #include <gst/gst.h>
 #include <gst/video/video-format.h>
 
-GST_DEBUG_CATEGORY_STATIC(gst_cudafilter_debug);
-#define GST_CAT_DEFAULT gst_cudafilter_debug
+GST_DEBUG_CATEGORY_STATIC(gst_cudahash_debug);
+#define GST_CAT_DEFAULT gst_cudahash_debug
 
-static const char ELEMENT_NAME[] = "cudafilter";
-static const char ELEMENT_LONG_NAME[] = "CUDA Filter element";
+static const char ELEMENT_NAME[] = "cudahash";
+static const char ELEMENT_LONG_NAME[] = "CUDA Image hashing element";
 static const char ELEMENT_TYPE[] = "Filter";
-static const char ELEMENT_DESCRIPTION[] = "Run libdsfilter filters on buffers and metadata.";
+static const char ELEMENT_DESCRIPTION[] = "Calculate an image hash for each buffer.";
 static const char ELEMENT_AUTHOR_AND_EMAIL[] = PACKAGE_AUTHOR " " PACKAGE_EMAIL;
 
 /* Filter signals and args */
@@ -81,35 +81,35 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE(
     GST_STATIC_CAPS(
         GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM", "{ NV12, RGBA }")));
 
-#define gst_cudafilter_parent_class parent_class
-G_DEFINE_TYPE(GstCudaFilter, gst_cudafilter, GST_TYPE_BASE_TRANSFORM);
+#define gst_cudahash_parent_class parent_class
+G_DEFINE_TYPE(GstCudaHash, gst_cudahash, GST_TYPE_BASE_TRANSFORM);
 
-static void gst_cudafilter_set_property(GObject* object,
+static void gst_cudahash_set_property(GObject* object,
                                         guint prop_id,
                                         const GValue* value,
                                         GParamSpec* pspec);
-static void gst_cudafilter_get_property(GObject* object,
+static void gst_cudahash_get_property(GObject* object,
                                         guint prop_id,
                                         GValue* value,
                                         GParamSpec* pspec);
 
-static GstFlowReturn gst_cudafilter_transform_ip(GstBaseTransform* base,
+static GstFlowReturn gst_cudahash_transform_ip(GstBaseTransform* base,
                                                  GstBuffer* outbuf);
-static gboolean gst_cudafilter_start(GstBaseTransform* base);
-static gboolean gst_cudafilter_stop(GstBaseTransform* base);
+static gboolean gst_cudahash_start(GstBaseTransform* base);
+static gboolean gst_cudahash_stop(GstBaseTransform* base);
 
 /* GObject vmethod implementations */
 
-/* initialize the cudafilter's class */
-static void gst_cudafilter_class_init(GstCudaFilterClass* klass) {
+/* initialize the cudahash's class */
+static void gst_cudahash_class_init(GstCudaHashClass* klass) {
   GObjectClass* gobject_class;
   GstElementClass* gstelement_class;
 
   gobject_class = (GObjectClass*)klass;
   gstelement_class = (GstElementClass*)klass;
 
-  gobject_class->set_property = gst_cudafilter_set_property;
-  gobject_class->get_property = gst_cudafilter_get_property;
+  gobject_class->set_property = gst_cudahash_set_property;
+  gobject_class->get_property = gst_cudahash_get_property;
 
   g_object_class_install_property(
       gobject_class, PROP_SILENT,
@@ -129,22 +129,22 @@ static void gst_cudafilter_class_init(GstCudaFilterClass* klass) {
   /* register vmethods
    */
   GST_BASE_TRANSFORM_CLASS(klass)->transform_ip =
-      GST_DEBUG_FUNCPTR(gst_cudafilter_transform_ip);
+      GST_DEBUG_FUNCPTR(gst_cudahash_transform_ip);
   GST_BASE_TRANSFORM_CLASS(klass)->start =
-      GST_DEBUG_FUNCPTR(gst_cudafilter_start);
+      GST_DEBUG_FUNCPTR(gst_cudahash_start);
   GST_BASE_TRANSFORM_CLASS(klass)->stop =
-      GST_DEBUG_FUNCPTR(gst_cudafilter_stop);
+      GST_DEBUG_FUNCPTR(gst_cudahash_stop);
 
   /* debug category for fltering log messages
    */
-  GST_DEBUG_CATEGORY_INIT(gst_cudafilter_debug, ELEMENT_NAME, 0,
+  GST_DEBUG_CATEGORY_INIT(gst_cudahash_debug, ELEMENT_NAME, 0,
                           ELEMENT_DESCRIPTION);
 }
 
 /* initialize the new element
  * initialize instance structure
  */
-static void gst_cudafilter_init(GstCudaFilter* filter) {
+static void gst_cudahash_init(GstCudaHash* filter) {
   filter->silent = FALSE;
   filter->filter = nullptr;
 }
@@ -154,8 +154,8 @@ static void gst_cudafilter_init(GstCudaFilter* filter) {
  * https://gstreamer.freedesktop.org/documentation/base/gstbasetransform.html?gi-language=c#GstBaseTransformClass::start
  */
 
-static gboolean gst_cudafilter_start(GstBaseTransform* base) {
-  GstCudaFilter* filter = GST_CUDAFILTER(base);
+static gboolean gst_cudahash_start(GstBaseTransform* base) {
+  GstCudaHash* filter = GST_CUDAHASH(base);
 
   /* create a CUDA filter for this instance
    */
@@ -169,8 +169,8 @@ static gboolean gst_cudafilter_start(GstBaseTransform* base) {
  * https://gstreamer.freedesktop.org/documentation/base/gstbasetransform.html?gi-language=c#GstBaseTransformClass::stop
  */
 
-static gboolean gst_cudafilter_stop(GstBaseTransform* base) {
-  GstCudaFilter* filter = GST_CUDAFILTER(base);
+static gboolean gst_cudahash_stop(GstBaseTransform* base) {
+  GstCudaHash* filter = GST_CUDAHASH(base);
 
   /* destroy the CUDA filter
    */
@@ -181,9 +181,9 @@ static gboolean gst_cudafilter_stop(GstBaseTransform* base) {
 
 /* do in-place work on the buffer (override the 'transform' method for copy)
  */
-static GstFlowReturn gst_cudafilter_transform_ip(GstBaseTransform* base,
+static GstFlowReturn gst_cudahash_transform_ip(GstBaseTransform* base,
                                                  GstBuffer* outbuf) {
-  GstCudaFilter* filter = GST_CUDAFILTER(base);
+  GstCudaHash* filter = GST_CUDAHASH(base);
 
   if (filter->silent == FALSE)
     GST_LOG("%s got buffer.", GST_ELEMENT_NAME(filter));
@@ -196,11 +196,11 @@ static GstFlowReturn gst_cudafilter_transform_ip(GstBaseTransform* base,
 
 /* __setattr__
  */
-static void gst_cudafilter_set_property(GObject* object,
+static void gst_cudahash_set_property(GObject* object,
                                         guint prop_id,
                                         const GValue* value,
                                         GParamSpec* pspec) {
-  GstCudaFilter* filter = GST_CUDAFILTER(object);
+  GstCudaHash* filter = GST_CUDAHASH(object);
 
   switch (prop_id) {
     case PROP_SILENT:
@@ -214,11 +214,11 @@ static void gst_cudafilter_set_property(GObject* object,
 
 /* __getattr__
  */
-static void gst_cudafilter_get_property(GObject* object,
+static void gst_cudahash_get_property(GObject* object,
                                         guint prop_id,
                                         GValue* value,
                                         GParamSpec* pspec) {
-  GstCudaFilter* filter = GST_CUDAFILTER(object);
+  GstCudaHash* filter = GST_CUDAHASH(object);
 
   switch (prop_id) {
     case PROP_SILENT:

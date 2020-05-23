@@ -7,31 +7,27 @@ plugin_incdir = include_directories('include')
 plugin_sources = [
   'src/gstcudaplugin.cpp',  # common plugin code
   'src/gstcudafilter.cpp',  # GstCudaFilter Element
+  'src/gstcudahash.cpp',    # GstCudaHash Element
+  'src/gstdsdistance.cpp',    # GstDsDistance Element
 ]
 
 # plugin dependencies
 deps = [
+  dependency('cuda'),
   dependency('gstreamer-1.0'),
   dependency('gstreamer-base-1.0'),
-  dependency('dsfilter', version: '>=0.0.1')
+  libdsfilter_proj.get_variable('libdsfilter_dep'),
 ]
 
 # plugin library target
 gst_cuda_plugin = shared_library(
   # library name, sources
   'gstcudaplugin', plugin_sources,
-  dependencies: [deps, dependency('cuda')],
+  dependencies: deps,
   include_directories: [plugin_incdir, config_incdir],
   install: true,
   install_dir: plugins_install_dir,
 )
 
-# plugin pkg-config (.po) target
-pkg = import('pkgconfig')
-pkg.generate(gst_cuda_plugin,
-  description: package_description,
-  filebase: gst_cuda_plugin.name(),
-  requires: deps,
-  url: package_uri,
-  version: package_version,
-)
+# add test subdir
+subdir('test')

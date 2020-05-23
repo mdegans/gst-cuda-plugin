@@ -20,32 +20,35 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __GST_CUDAFILTER_H__
-#define __GST_CUDAFILTER_H__
+#ifndef GST_CUDAFILTER_H__
+#define GST_CUDAFILTER_H__
 
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 
-#include <dsfilter/TestCudaFilter.hpp>
+#include <BaseCudaFilter.hpp>
 
 G_BEGIN_DECLS
 
-typedef TestCudaFilter TestCudaFilter;
+typedef BaseFilter BaseFilter;
 
 #define GST_TYPE_CUDAFILTER (gst_cudafilter_get_type())
-G_DECLARE_FINAL_TYPE(GstCudaFilter, gst_cudafilter, GST, CUDAFILTER,
-					 GstBaseTransform)
+G_DECLARE_FINAL_TYPE(GstCudaFilter,
+                     gst_cudafilter,
+                     GST,
+                     CUDAFILTER,
+                     GstBaseTransform)
 
 struct _GstCudaFilter {
-	GstBaseTransform element;
+  GstBaseTransform element;
 
-	// Test cuda filter
-	TestCudaFilter * filter;
+  // Base CUDA filter
+  BaseFilter* filter;
 
-	// public:
-	gboolean silent;
+  // properties:
+  gboolean silent;
 };
 
 G_END_DECLS
 
-#endif /* __GST_CUDAFILTER_H__ */
+#endif /* GST_CUDAFILTER_H__ */

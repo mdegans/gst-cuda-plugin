@@ -1,7 +1,7 @@
 // this file is just to reduce IDE squigglies before config.h is generated
 
-#ifndef __CONFIG_DEV_H__
-#define __CONFIG_DEV_H__
+#ifndef CONFIG_DEV_H__
+#define CONFIG_DEV_H__
 
 #pragma once
 
@@ -15,4 +15,4 @@
 #define GST_PACKAGE_ORIGIN "https://github.com/mdegans/gst-cuda-filter"
 #define PACKAGE_DESCRIPTION GST_PACKAGE_NAME
 
-#endif // __CONFIG_DEV_H__
+#endif  // CONFIG_DEV_H__

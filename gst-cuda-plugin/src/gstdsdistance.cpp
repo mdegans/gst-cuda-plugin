@@ -20,21 +20,22 @@
  */
 
 /**
- * SECTION:element-cudafilter
+ * SECTION:element-dsdistance
  *
- * Cudafilter is an example CUDA filter for gstreamer.
+ * DsDistance is an element for coloring osd boxes with DeepStream.
+ * 
+ * DsDistance operates on metadata only.
  *
  * <refsect2>
- * <title>Example launch line</title>
+ * <title>Example usage</title>
  * |[
- * gst-launch -v -m nvarguscamerasrc ! cudafilter ! autovideosink
+ * ... ! nvinfer ! nvtracker ! dsdistance ! nvosd ...
  * ]|
  * </refsect2>
  */
 
-#include "gstcudafilter.h"
+#include "gstdsdistance.h"
 
-#include "TestCudaFilter.hpp"
 #include "config.h"
 
 // gstreamer
@@ -43,14 +44,20 @@
 #include <gst/gst.h>
 #include <gst/video/video-format.h>
 
-GST_DEBUG_CATEGORY_STATIC(gst_cudafilter_debug);
-#define GST_CAT_DEFAULT gst_cudafilter_debug
+GST_DEBUG_CATEGORY_STATIC(gst_dsdistance_debug);
+#define GST_CAT_DEFAULT gst_dsdistance_debug
 
-static const char ELEMENT_NAME[] = "cudafilter";
-static const char ELEMENT_LONG_NAME[] = "CUDA Filter element";
+static const char ELEMENT_NAME[] = "dsdistance";
+static const char ELEMENT_LONG_NAME[] = "DeepStream social distancing element";
 static const char ELEMENT_TYPE[] = "Filter";
-static const char ELEMENT_DESCRIPTION[] = "Run libdsfilter filters on buffers and metadata.";
+static const char ELEMENT_DESCRIPTION[] = "Make close objects red.";
 static const char ELEMENT_AUTHOR_AND_EMAIL[] = PACKAGE_AUTHOR " " PACKAGE_EMAIL;
+
+/**
+ * The maximum class id that can be set.
+ */
+static const int MAX_CLASS_ID = 4096;
+static const int DEFAULT_CLASS_ID = 0;
 
 /* Filter signals and args */
 enum {
@@ -61,6 +68,7 @@ enum {
 enum {
   PROP_0,
   PROP_SILENT,
+  PROP_CLASS_ID,
 };
 
 /* the capabilities of the inputs and outputs.
@@ -81,40 +89,46 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE(
     GST_STATIC_CAPS(
         GST_VIDEO_CAPS_MAKE_WITH_FEATURES("memory:NVMM", "{ NV12, RGBA }")));
 
-#define gst_cudafilter_parent_class parent_class
-G_DEFINE_TYPE(GstCudaFilter, gst_cudafilter, GST_TYPE_BASE_TRANSFORM);
+#define gst_dsdistance_parent_class parent_class
+G_DEFINE_TYPE(GstDsDistance, gst_dsdistance, GST_TYPE_BASE_TRANSFORM);
 
-static void gst_cudafilter_set_property(GObject* object,
+static void gst_dsdistance_set_property(GObject* object,
                                         guint prop_id,
                                         const GValue* value,
                                         GParamSpec* pspec);
-static void gst_cudafilter_get_property(GObject* object,
+static void gst_dsdistance_get_property(GObject* object,
                                         guint prop_id,
                                         GValue* value,
                                         GParamSpec* pspec);
 
-static GstFlowReturn gst_cudafilter_transform_ip(GstBaseTransform* base,
+static GstFlowReturn gst_dsdistance_transform_ip(GstBaseTransform* base,
                                                  GstBuffer* outbuf);
-static gboolean gst_cudafilter_start(GstBaseTransform* base);
-static gboolean gst_cudafilter_stop(GstBaseTransform* base);
+static gboolean gst_dsdistance_start(GstBaseTransform* base);
+static gboolean gst_dsdistance_stop(GstBaseTransform* base);
 
 /* GObject vmethod implementations */
 
-/* initialize the cudafilter's class */
-static void gst_cudafilter_class_init(GstCudaFilterClass* klass) {
+/* initialize the dsdistance's class */
+static void gst_dsdistance_class_init(GstDsDistanceClass* klass) {
   GObjectClass* gobject_class;
   GstElementClass* gstelement_class;
 
   gobject_class = (GObjectClass*)klass;
   gstelement_class = (GstElementClass*)klass;
 
-  gobject_class->set_property = gst_cudafilter_set_property;
-  gobject_class->get_property = gst_cudafilter_get_property;
+  gobject_class->set_property = gst_dsdistance_set_property;
+  gobject_class->get_property = gst_dsdistance_get_property;
 
   g_object_class_install_property(
       gobject_class, PROP_SILENT,
       g_param_spec_boolean(
           "silent", "Silent", "Produce verbose output ?", FALSE,
+          GParamFlags(G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE)));
+
+  g_object_class_install_property(
+      gobject_class, PROP_CLASS_ID,
+      g_param_spec_int(
+          "class-id", "ClassID", "Class id of a person.", 0, MAX_CLASS_ID, DEFAULT_CLASS_ID,
           GParamFlags(G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE)));
 
   gst_element_class_set_details_simple(gstelement_class, ELEMENT_LONG_NAME,
@@ -129,24 +143,29 @@ static void gst_cudafilter_class_init(GstCudaFilterClass* klass) {
   /* register vmethods
    */
   GST_BASE_TRANSFORM_CLASS(klass)->transform_ip =
-      GST_DEBUG_FUNCPTR(gst_cudafilter_transform_ip);
+      GST_DEBUG_FUNCPTR(gst_dsdistance_transform_ip);
   GST_BASE_TRANSFORM_CLASS(klass)->start =
-      GST_DEBUG_FUNCPTR(gst_cudafilter_start);
+      GST_DEBUG_FUNCPTR(gst_dsdistance_start);
   GST_BASE_TRANSFORM_CLASS(klass)->stop =
-      GST_DEBUG_FUNCPTR(gst_cudafilter_stop);
+      GST_DEBUG_FUNCPTR(gst_dsdistance_stop);
 
   /* debug category for fltering log messages
    */
-  GST_DEBUG_CATEGORY_INIT(gst_cudafilter_debug, ELEMENT_NAME, 0,
+  GST_DEBUG_CATEGORY_INIT(gst_dsdistance_debug, ELEMENT_NAME, 0,
                           ELEMENT_DESCRIPTION);
 }
 
 /* initialize the new element
  * initialize instance structure
  */
-static void gst_cudafilter_init(GstCudaFilter* filter) {
+static void gst_dsdistance_init(GstDsDistance* filter) {
+  GST_DEBUG("dsdistance init");
+
   filter->silent = FALSE;
-  filter->filter = nullptr;
+  /* create a DistanceFilter for this instance
+   */
+  filter->filter = new DistanceFilter();
+  filter->filter->class_id = DEFAULT_CLASS_ID;
 }
 
 /* start the element and create external resources
@@ -154,12 +173,10 @@ static void gst_cudafilter_init(GstCudaFilter* filter) {
  * https://gstreamer.freedesktop.org/documentation/base/gstbasetransform.html?gi-language=c#GstBaseTransformClass::start
  */
 
-static gboolean gst_cudafilter_start(GstBaseTransform* base) {
-  GstCudaFilter* filter = GST_CUDAFILTER(base);
+static gboolean gst_dsdistance_start(GstBaseTransform* base) {
+  GST_DEBUG("dsdistance start");
 
-  /* create a CUDA filter for this instance
-   */
-  filter->filter = new TestCudaFilter();
+  GstDsDistance* filter = GST_DSDISTANCE(base);
 
   return true;
 }
@@ -169,10 +186,11 @@ static gboolean gst_cudafilter_start(GstBaseTransform* base) {
  * https://gstreamer.freedesktop.org/documentation/base/gstbasetransform.html?gi-language=c#GstBaseTransformClass::stop
  */
 
-static gboolean gst_cudafilter_stop(GstBaseTransform* base) {
-  GstCudaFilter* filter = GST_CUDAFILTER(base);
+static gboolean gst_dsdistance_stop(GstBaseTransform* base) {
+  GST_DEBUG("dsdistnace stop");
+  GstDsDistance* filter = GST_DSDISTANCE(base);
 
-  /* destroy the CUDA filter
+  /* destroy the DistanceFilter
    */
   delete filter->filter;
 
@@ -181,9 +199,9 @@ static gboolean gst_cudafilter_stop(GstBaseTransform* base) {
 
 /* do in-place work on the buffer (override the 'transform' method for copy)
  */
-static GstFlowReturn gst_cudafilter_transform_ip(GstBaseTransform* base,
+static GstFlowReturn gst_dsdistance_transform_ip(GstBaseTransform* base,
                                                  GstBuffer* outbuf) {
-  GstCudaFilter* filter = GST_CUDAFILTER(base);
+  GstDsDistance* filter = GST_DSDISTANCE(base);
 
   if (filter->silent == FALSE)
     GST_LOG("%s got buffer.", GST_ELEMENT_NAME(filter));
@@ -196,15 +214,18 @@ static GstFlowReturn gst_cudafilter_transform_ip(GstBaseTransform* base,
 
 /* __setattr__
  */
-static void gst_cudafilter_set_property(GObject* object,
+static void gst_dsdistance_set_property(GObject* object,
                                         guint prop_id,
                                         const GValue* value,
                                         GParamSpec* pspec) {
-  GstCudaFilter* filter = GST_CUDAFILTER(object);
+  GstDsDistance* filter = GST_DSDISTANCE(object);
 
   switch (prop_id) {
     case PROP_SILENT:
       filter->silent = g_value_get_boolean(value);
+      break;
+    case PROP_CLASS_ID:
+      filter->filter->class_id = g_value_get_int(value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -214,15 +235,18 @@ static void gst_cudafilter_set_property(GObject* object,
 
 /* __getattr__
  */
-static void gst_cudafilter_get_property(GObject* object,
+static void gst_dsdistance_get_property(GObject* object,
                                         guint prop_id,
                                         GValue* value,
                                         GParamSpec* pspec) {
-  GstCudaFilter* filter = GST_CUDAFILTER(object);
+  GstDsDistance* filter = GST_DSDISTANCE(object);
 
   switch (prop_id) {
     case PROP_SILENT:
       g_value_set_boolean(value, filter->silent);
+      break;
+    case PROP_CLASS_ID:
+      g_value_set_int(value, filter->filter->class_id);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
