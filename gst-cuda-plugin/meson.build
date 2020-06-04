@@ -5,10 +5,12 @@ config_incdir = include_directories('config_h')
 # plugin sources
 plugin_incdir = include_directories('include')
 plugin_sources = [
-  'src/gstcudaplugin.cpp',  # common plugin code
-  'src/gstcudafilter.cpp',  # GstCudaFilter Element
-  'src/gstcudahash.cpp',    # GstCudaHash Element
-  'src/gstdsdistance.cpp',    # GstDsDistance Element
+  'src/gstcudaplugin.cpp',     # common plugin code
+  'src/gstcudafilter.cpp',     # cudafilter Element
+  'src/gstcudahash.cpp',       # cudahash Element
+  'src/gstdsdistance.cpp',     # dsdistance Element
+  'src/gstdsprotopayload.cpp', # dsprotopayload Element
+  'src/gstpayloadbroker.cpp',  # payloadbroker Element
 ]
 
 # plugin dependencies
@@ -16,7 +18,7 @@ deps = [
   dependency('cuda'),
   dependency('gstreamer-1.0'),
   dependency('gstreamer-base-1.0'),
-  libdsfilter_proj.get_variable('libdsfilter_dep'),
+  dependency('dsfilter-0.3'),
 ]
 
 # plugin library target

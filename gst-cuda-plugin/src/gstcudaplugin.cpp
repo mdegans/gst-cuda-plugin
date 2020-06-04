@@ -25,6 +25,8 @@
 #include "gstcudafilter.h"
 #include "gstcudahash.h"
 #include "gstdsdistance.h"
+#include "gstdsprotopayload.h"
+#include "gstpayloadbroker.h"
 
 static gboolean cudaplugin_init(GstPlugin* plugin) {
   if (!gst_element_register(plugin, "cudafilter", GST_RANK_NONE,
@@ -40,6 +42,16 @@ static gboolean cudaplugin_init(GstPlugin* plugin) {
   if (!gst_element_register(plugin, "dsdistance", GST_RANK_NONE,
                             GST_TYPE_DSDISTANCE)) {
     GST_ERROR("could not register dsdistance");
+    return false;
+  };
+  if (!gst_element_register(plugin, "dsprotopayload", GST_RANK_NONE,
+                            GST_TYPE_DSPROTOPAYLOAD)) {
+    GST_ERROR("could not register dsprotopayload");
+    return false;
+  };
+  if (!gst_element_register(plugin, "payloadbroker", GST_RANK_NONE,
+                            GST_TYPE_PAYLOADBROKER)) {
+    GST_ERROR("could not register payloadbroker");
     return false;
   };
   return true;

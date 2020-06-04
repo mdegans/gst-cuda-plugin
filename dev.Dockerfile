@@ -18,7 +18,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 # USA
 
-FROM nvcr.io/nvidia/deepstream:5.0-dp-20.04-devel
+ARG DSFILTER_TAG="UNSET (use docker_build.sh to build)"
+ARG AUTHOR="UNSET (use docker_build.sh to build)"
+FROM ${AUTHOR}/libdsfilter:${DSFILTER_TAG}
+
+ARG PREFIX="/usr"
+ARG SRCDIR="${PREFIX}/src/gst-cuda-plugin"
 
 # install deps and create user
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,31 +39,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get purge -y --autoremove \
         python3-pip \
         python3-setuptools \
-        python3-wheel \
-    && chmod -R o-w /opt/nvidia/deepstream/deepstream-5.0/ \
-    && useradd -md /var/test -rUs /bin/false test
-
-# fix ldconfig (dammit, Nvidia. testing testing testing!)
-RUN echo "/opt/nvidia/deepstream/deepstream/lib" > /etc/ld.so.conf.d/deepstream.conf \
-    && ldconfig
+        python3-wheel
 
 # copy source
-WORKDIR /opt/gst-cuda-plugin/source
+WORKDIR ${SRCDIR}
 COPY meson.build COPYING VERSION README.md ./
 COPY gst-cuda-plugin ./gst-cuda-plugin/
-COPY subprojects ./subprojects/
 
 # build and install
 RUN mkdir build \
     && cd build \
-    && meson --prefix=/usr .. \
+    && meson --prefix=${PREFIX} .. \
     && ninja \
     && ninja test \
     && ninja install \
     && ldconfig
-# TODO(mdegans): put script to run ldconfig automatically and/or search/ask for advice on best practices
 
-# drop to user and run verbosely
-USER test:test
+# run verbosely
 ENV G_MESSAGES_DEBUG="all"
 ENTRYPOINT [ "gst-inspect-1.0" ]

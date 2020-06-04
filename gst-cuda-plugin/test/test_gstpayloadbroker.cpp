@@ -19,12 +19,12 @@
  * Boston, MA 02110-1301, USA.
  */
 
+#include "gstpayloadbroker.h"
+
 #include <gst/check/check.h>
 
-#include "gstdsdistance.h"
-
-static const char* ELEMENT_NAME = "dsdistance";
-static const char* ELEMENT_TYPE_NAME = "GstDsDistance";
+static const char* ELEMENT_NAME = "payloadbroker";
+static const char* ELEMENT_TYPE_NAME = "GstPayloadBroker";
 
 // test pad formats
 static const char* ELEMENT_CAPS_TEST_NV12_STR =
@@ -57,16 +57,18 @@ GST_START_TEST(test_setup_teardown) {
 }
 GST_END_TEST;
 
+
 GST_START_TEST(test_type) {
   GstElement* filter = gst_check_setup_element(ELEMENT_NAME);
 
   ck_assert(GST_IS_ELEMENT(filter));
-  ck_assert(GST_IS_DSDISTANCE(filter));
+  ck_assert(GST_IS_PAYLOADBROKER(filter));
   ck_assert_str_eq(G_OBJECT_TYPE_NAME(filter), ELEMENT_TYPE_NAME);
 
   gst_check_teardown_element(filter);
 }
 GST_END_TEST;
+
 
 GST_START_TEST(test_name_property) {
   GstElement* filter;
@@ -78,12 +80,14 @@ GST_START_TEST(test_name_property) {
 }
 GST_END_TEST;
 
+
 GST_START_TEST(test_autoptr) {
   // this just tests it doensn't crash
   // TODO(mdegans): research if this test is adequate, or even necessary
   g_autoptr(GstElement) filter = gst_element_factory_make(ELEMENT_NAME, nullptr);
 }
 GST_END_TEST;
+
 
 // https://gstreamer.freedesktop.org/documentation/check/gstcheck.html?gi-language=c#gst_check_setup_src_pad_by_name
 static inline void _test_pads(const gchar* caps_str) {
@@ -114,15 +118,18 @@ static inline void _test_pads(const gchar* caps_str) {
   gst_check_teardown_element(filter);
 }
 
+
 GST_START_TEST(test_pads_nv12) {
   _test_pads(ELEMENT_CAPS_TEST_NV12_STR);
 }
 GST_END_TEST;
 
+
 GST_START_TEST(test_pads_rgba) {
   _test_pads(ELEMENT_CAPS_TEST_RGBA_STR);
 }
 GST_END_TEST;
+
 
 GST_START_TEST(test_silent_property) {
   GstElement* filter;
@@ -149,6 +156,7 @@ GST_START_TEST(test_silent_property) {
   gst_object_unref(filter);
 }
 GST_END_TEST;
+
 
 /* harness tests */
 /* https://gstreamer.freedesktop.org/documentation/check/gstharness.html */
@@ -183,15 +191,18 @@ static inline void _test_harness_passthrough(const char* caps_str) {
   gst_harness_teardown(h);
 }
 
+
 GST_START_TEST(test_harness_nv12_passthrough) {
   _test_harness_passthrough(ELEMENT_CAPS_TEST_NV12_STR);
 }
 GST_END_TEST;
 
+
 GST_START_TEST(test_harness_rgba_passthrough) {
   _test_harness_passthrough(ELEMENT_CAPS_TEST_RGBA_STR);
 }
 GST_END_TEST;
+
 
 static inline void _test_with_src(const gchar* src_str) {
   GstHarness* h;
@@ -216,8 +227,9 @@ GST_START_TEST(test_simple_pipeline) {
 }
 GST_END_TEST;
 
-static Suite* dsdistance_suite(void) {
-  Suite* s = suite_create(ELEMENT_NAME);
+
+static Suite* payloadbroker_suite(void) {
+  Suite* s = suite_create("ELEMENT_NAME");
   TCase* bc = tcase_create("basic");
   TCase* cc = tcase_create("check");
   TCase* hc = tcase_create("harness");
@@ -244,4 +256,4 @@ static Suite* dsdistance_suite(void) {
   return s;
 }
 
-GST_CHECK_MAIN(dsdistance);
+GST_CHECK_MAIN(payloadbroker);

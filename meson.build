@@ -7,8 +7,7 @@ project('gst-cuda-plugin', ['cpp'],
   meson_version: '>= 0.54.0',
   license : 'LGPL',
 )
-# include libdsfilter as a subproject,
-libdsfilter_proj = subproject('libdsfilter')
+
 gst_api_version = '1.0'
 package_name = 'gstcudaplugin'
 package_long_name = package_name + '-' + gst_api_version

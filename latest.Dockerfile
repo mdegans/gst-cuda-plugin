@@ -19,40 +19,39 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301
 # USA
 
-FROM nvcr.io/nvidia/deepstream:5.0-dp-20.04-devel
+# TODO(mdegans): find way to get gstreamer plugin path and just install/link
+#  the plugin there rather than installing everything to /usr prefix
 
-ARG USERNAME="cudaplugin"
-ARG GIT_REPO="https://github.com/mdegans/gst-cuda-plugin.git"
-ARG BRANCH="master"
+ARG BASE_TAG="UNSET (use docker_build.sh to build)"
+ARG AUTHOR="UNSET (use docker_build.sh to build)"
+FROM registry.hub.docker.com/${AUTHOR}/libdsfilter:${BASE_TAG}
 
-# install build deps, build, clean up, add user
+ARG PREFIX="/usr"
+ARG SRCDIR="${PREFIX}/src/gst-cuda-plugin"
+
+WORKDIR ${SRCDIR}
+COPY meson.build COPYING VERSION README.md ./
+COPY gst-cuda-plugin ./gst-cuda-plugin/
+
+# install build deps, build, clean up
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git \
         python3-pip \
         python3-setuptools \
         python3-wheel \
         ninja-build \
     && pip3 install meson \
-    && chmod -R o-w /opt/nvidia/deepstream/deepstream-5.0/ \
-    && echo "/opt/nvidia/deepstream/deepstream/lib" > /etc/ld.so.conf.d/deepstream.conf \
-    && ldconfig \
-    && git clone --depth 1 --branch ${BRANCH} ${GIT_REPO} \
-    && cd gst-cuda-plugin \
     && mkdir build \
     && cd build \
-    && meson --prefix=/usr .. \
+    && meson --prefix=${PREFIX} .. \
     && ninja \
     && ninja test \
     && ninja install \
+    && cd .. && rm -rf build \
     && ldconfig \
+    && pip3 uninstall -y meson \
     && apt-get purge -y --autoremove \
-        git \
         python3-pip \
         python3-setuptools \
         python3-wheel \
         ninja-build \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -md /var/${USERNAME} -rUs /bin/false ${USERNAME}
-
-# drop to user
-USER ${USERNAME}:${USERNAME}
+    && rm -rf /var/lib/apt/lists/*

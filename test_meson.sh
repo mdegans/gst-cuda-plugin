@@ -1,1 +1,0 @@
-docker build --rm -f "dev.Dockerfile" -t mdegans/gstcudaplugin:latest "." 2>&1 | tee test_meson.log
