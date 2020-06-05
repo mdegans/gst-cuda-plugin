@@ -22,9 +22,9 @@
 # TODO(mdegans): find way to get gstreamer plugin path and just install/link
 #  the plugin there rather than installing everything to /usr prefix
 
-ARG BASE_TAG="UNSET (use docker_build.sh to build)"
+ARG DSFILTER_TAG="UNSET (use docker_build.sh to build)"
 ARG AUTHOR="UNSET (use docker_build.sh to build)"
-FROM registry.hub.docker.com/${AUTHOR}/libdsfilter:${BASE_TAG}
+FROM registry.hub.docker.com/${AUTHOR}/libdsfilter:${DSFILTER_TAG}
 
 ARG PREFIX="/usr"
 ARG SRCDIR="${PREFIX}/src/gst-cuda-plugin"
