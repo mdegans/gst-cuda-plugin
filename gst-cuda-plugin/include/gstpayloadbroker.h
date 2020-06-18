@@ -26,11 +26,17 @@
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 
-#include <PyPayloadBroker.hpp>
+#include <BaseFilter.hpp>
 
 G_BEGIN_DECLS
 
-typedef PayloadBroker PayloadBroker;
+typedef BaseFilter BaseFilter;
+
+typedef enum {
+  PAYLOAD_BROKER_MODE_PROPERTY,
+  PAYLOAD_BROKER_MODE_PROTO,
+  PAYLOAD_BROKER_MODE_CSV
+} GstPayloadBrokerMode;
 
 #define GST_TYPE_PAYLOADBROKER (gst_payloadbroker_get_type())
 G_DECLARE_FINAL_TYPE(GstPayloadBroker,
@@ -43,10 +49,12 @@ struct _GstPayloadBroker {
   GstBaseTransform element;
 
   // The protobuf payload broker.
-  PyPayloadBroker* filter;
+  BaseFilter* filter;
 
   // properties:
   gboolean silent;
+  gchararray basepath;
+  GstPayloadBrokerMode mode;
 };
 
 G_END_DECLS

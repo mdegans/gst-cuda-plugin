@@ -161,10 +161,13 @@ static void gst_dsprotopayload_init(GstDsProtoPayload* filter) {
  * https://gstreamer.freedesktop.org/documentation/base/gstbasetransform.html?gi-language=c#GstBaseTransformClass::start
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 static gboolean gst_dsprotopayload_start(GstBaseTransform* base) {
   GST_DEBUG("dsprotopayload start");
   return true;
 }
+#pragma GCC diagnostic pop
 
 /* stop the element and free external resources
  *

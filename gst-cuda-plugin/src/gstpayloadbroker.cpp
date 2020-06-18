@@ -38,6 +38,8 @@
 #include "gstpayloadbroker.h"
 
 #include "PyPayloadBroker.hpp"
+#include "FileMetaBroker.hpp"
+
 #include "config.h"
 
 // gstreamer
@@ -65,7 +67,28 @@ enum {
   PROP_0,
   PROP_SILENT,
   PROP_RESULTS,
+  PROP_MODE,
+  PROP_BASEPATH,
 };
+
+#define GST_TYPE_PAYLOAD_BROKER_MODE (gst_payload_broker_mode_get_type())
+static GType
+gst_payload_broker_mode_get_type (void)
+{
+  static GType payloadbroker_mode_type = 0;
+  static const GEnumValue payloadbroker_mode[] = {
+    {PAYLOAD_BROKER_MODE_PROPERTY, "return protobuf from results property", "property"},
+    {PAYLOAD_BROKER_MODE_PROTO, "write coded protobuf to file", "proto"},
+    {PAYLOAD_BROKER_MODE_CSV, "write csv to file (smart_distancing format).", "csv"},
+    {0, nullptr, nullptr},
+  };
+
+  if (!payloadbroker_mode_type) {
+    payloadbroker_mode_type =
+        g_enum_register_static ("GstPayloadBrokerModeType", payloadbroker_mode);
+  }
+  return payloadbroker_mode_type;
+}
 
 /* the capabilities of the inputs and outputs.
  *
@@ -127,8 +150,25 @@ static void gst_payloadbroker_class_init(GstPayloadBrokerClass* klass) {
     gobject_class, PROP_RESULTS,
     g_param_spec_string("results", "Results",
       "Latest serialized results as "
-      "libdistanceproto::Batch protobuf string.",
-      nullptr, GParamFlags(G_PARAM_READABLE)));
+      "libdistanceproto::Batch protobuf string (in property mode).", nullptr,
+      GParamFlags(G_PARAM_READABLE | G_PARAM_STATIC_STRINGS)));
+
+  // broker mode property
+  g_object_class_install_property(
+    gobject_class, PROP_MODE,
+    g_param_spec_enum("mode", "Mode",
+      "The mode for the element to operate in.",
+      GST_TYPE_PAYLOAD_BROKER_MODE, PAYLOAD_BROKER_MODE_PROPERTY,
+      GParamFlags(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+        GST_PARAM_MUTABLE_READY)));
+
+  // basename property
+  g_object_class_install_property(
+    gobject_class, PROP_BASEPATH,
+    g_param_spec_string("basepath", "BasePath",
+      "The full base path (minus extension) in proto or csv mode", nullptr,
+      GParamFlags(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+        GST_PARAM_MUTABLE_READY)));
 
   gst_element_class_set_details_simple(
     gstelement_class, ELEMENT_LONG_NAME,
@@ -169,7 +209,9 @@ static void gst_payloadbroker_init(GstPayloadBroker* self) {
    *
    * Eventually the hope is to set a python callback, but this work for now.
    */
-  self->filter = new PyPayloadBroker();
+  self->mode = PAYLOAD_BROKER_MODE_PROPERTY;
+  self->filter = nullptr;
+  self->basepath = nullptr;
 }
 
 /* start the element and create external resources
@@ -180,6 +222,35 @@ static void gst_payloadbroker_init(GstPayloadBroker* self) {
 static gboolean gst_payloadbroker_start(GstBaseTransform* base) {
   GstPayloadBroker* self = GST_PAYLOADBROKER(base);
   GST_DEBUG_OBJECT(self, "payloadbroker start");
+
+  switch (self->mode)
+  {
+    case PAYLOAD_BROKER_MODE_PROPERTY:
+      self->filter = new PyPayloadBroker();
+      break;
+    case PAYLOAD_BROKER_MODE_PROTO:
+      if (self->basepath == nullptr) {
+        GST_ERROR_OBJECT(self, "basepath must be set for proto mode");
+        return false;
+      }
+      GST_DEBUG("creating FileMetaBroker with path %s and mode: proto", self->basepath);
+      self->filter = new FileMetaBroker(self->basepath, FileMetaBroker::proto);
+      ((FileMetaBroker*)self->filter)->start();
+      break;
+    case PAYLOAD_BROKER_MODE_CSV:
+      if (self->basepath == nullptr) {
+        GST_ERROR_OBJECT(self, "basepath must be set for csv mode");
+        return false;
+      }
+      GST_DEBUG("creating FileMetaBroker with path %s and mode: csv", self->basepath);
+      self->filter = new FileMetaBroker(self->basepath, FileMetaBroker::csv);
+      ((FileMetaBroker*)self->filter)->start();
+      break;
+    default:
+      GST_ERROR_OBJECT(self, "mode property broken");
+      return false;
+      break;
+  }
   return true;
 }
 
@@ -190,11 +261,22 @@ static gboolean gst_payloadbroker_start(GstBaseTransform* base) {
 
 static gboolean gst_payloadbroker_stop(GstBaseTransform* base) {
   GstPayloadBroker* self = GST_PAYLOADBROKER(base);
-  GST_DEBUG_OBJECT(self, "payloadbroker stop");
+  GST_DEBUG_OBJECT(self, "stop");
   /* destroy the DistanceFilter
    */
 
+  switch (self->mode)
+  {
+    case PAYLOAD_BROKER_MODE_PROTO:
+    case PAYLOAD_BROKER_MODE_CSV:
+      ((FileMetaBroker*)self->filter)->stop();
+      break;
+    default:
+      break;
+  }
+
   delete self->filter;
+  self->filter = nullptr;
 
   return true;
 }
@@ -229,6 +311,13 @@ static void gst_payloadbroker_set_property(GObject* object,
     case PROP_RESULTS:
       G_OBJECT_WARN_INVALID_PSPEC(object, "results", prop_id, pspec);
       break;
+    case PROP_MODE:
+      self->mode = (GstPayloadBrokerMode) g_value_get_enum(value);
+      break;
+    case PROP_BASEPATH:
+      g_free(self->basepath);
+      self->basepath = g_value_dup_string(value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
       break;
@@ -243,15 +332,30 @@ static void gst_payloadbroker_get_property(GObject* object,
                                            GParamSpec* pspec) {
   GstPayloadBroker* self = GST_PAYLOADBROKER(object);
   gchararray results = nullptr;
+  PyPayloadBroker* pybroker = nullptr;
   switch (prop_id) {
     case PROP_SILENT:
       g_value_set_boolean(value, self->silent);
       break;
     case PROP_RESULTS:
-      results = self->filter->get_payload();
+      if (self->mode != PAYLOAD_BROKER_MODE_PROPERTY 
+          || self->filter == nullptr) {
+        // i don't know if this is necessary but it (probably)
+        // can't hurt
+        g_value_set_string(value, nullptr);
+        break;
+      }
+      pybroker = (PyPayloadBroker*) self->filter;
+      results = pybroker->get_payload();
       if (results != nullptr) {
         g_value_take_string(value, results);
       }
+      break;
+    case PROP_MODE:
+      g_value_set_enum(value, self->mode);
+      break;
+    case PROP_BASEPATH:
+      g_value_set_string(value, self->basepath);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);

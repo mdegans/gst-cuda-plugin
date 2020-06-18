@@ -35,23 +35,24 @@ COPY gst-cuda-plugin ./gst-cuda-plugin/
 
 # install build deps, build, clean up
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        cuda-compiler-10-2 \
+        cuda-cudart-dev-10-2 \
+        ninja-build \
         python3-pip \
         python3-setuptools \
         python3-wheel \
-        ninja-build \
     && pip3 install meson \
     && mkdir build \
     && cd build \
     && meson --prefix=${PREFIX} .. \
     && ninja \
-    && ninja test \
     && ninja install \
     && cd .. && rm -rf build \
     && ldconfig \
     && pip3 uninstall -y meson \
     && apt-get purge -y --autoremove \
+        ninja-build \
         python3-pip \
         python3-setuptools \
         python3-wheel \
-        ninja-build \
     && rm -rf /var/lib/apt/lists/*

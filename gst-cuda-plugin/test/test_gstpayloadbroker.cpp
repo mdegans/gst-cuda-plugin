@@ -160,7 +160,6 @@ GST_END_TEST;
 
 /* harness tests */
 /* https://gstreamer.freedesktop.org/documentation/check/gstharness.html */
-
 static inline void _test_harness_passthrough(const char* caps_str) {
   GstHarness* h;
   GstBuffer* in_buf;
@@ -171,8 +170,8 @@ static inline void _test_harness_passthrough(const char* caps_str) {
   g_assert_nonnull(h);
 
   // set caps
-  gst_harness_set_src_caps_str(h, ELEMENT_CAPS_TEST_NV12_STR);
-  gst_harness_set_sink_caps_str(h, ELEMENT_CAPS_TEST_NV12_STR);
+  gst_harness_set_src_caps_str(h, caps_str);
+  gst_harness_set_sink_caps_str(h, caps_str);
 
   // create a buffer of size 42
   in_buf = gst_harness_create_buffer(h, 42);
