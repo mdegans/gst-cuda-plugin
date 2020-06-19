@@ -23,7 +23,7 @@ readonly VERSION=$(head -n 1 $THIS_DIR/VERSION)
 readonly TAG_BASE="$AUTHOR/$PROJ_NAME"
 TAG_FULL="$TAG_BASE:$VERSION"
 
-readonly DSFILTER_TAG="latest-$ARCH"
+readonly DSFILTER_TAG="$VERSION-$ARCH"
 readonly TAG_SUFFIX="${TAG_SUFFIX}-$ARCH"
 readonly TAG_FULL="${TAG_FULL}-$ARCH"
 
