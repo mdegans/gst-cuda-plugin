@@ -1,16 +1,16 @@
 
 # a list of dicts describing tests
 tests = [
-  {
-    'description': 'Test cudafilter element using GstCheck     ',
-    'filename': 'test_gstcudafilter',
-    'sources': ['test_gstcudafilter.cpp'],
-  },
-  {
-    'description': 'Test cudahash element using GstCheck       ',
-    'filename': 'test_gstcudahash',
-    'sources': ['test_gstcudahash.cpp'],
-  },
+  # {
+  #   'description': 'Test cudafilter element using GstCheck     ',
+  #   'filename': 'test_gstcudafilter',
+  #   'sources': ['test_gstcudafilter.cpp'],
+  # },
+  # {
+  #   'description': 'Test cudahash element using GstCheck       ',
+  #   'filename': 'test_gstcudahash',
+  #   'sources': ['test_gstcudahash.cpp'],
+  # },
   {
     'description': 'Test dsdistance element using GstCheck     ',
     'filename': 'test_gstdsdistance',

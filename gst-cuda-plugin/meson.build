@@ -6,8 +6,8 @@ config_incdir = include_directories('config_h')
 plugin_incdir = include_directories('include')
 plugin_sources = [
   'src/gstcudaplugin.cpp',     # common plugin code
-  'src/gstcudafilter.cpp',     # cudafilter Element
-  'src/gstcudahash.cpp',       # cudahash Element
+  # 'src/gstcudafilter.cpp',     # cudafilter Element
+  # 'src/gstcudahash.cpp',       # cudahash Element
   'src/gstdsdistance.cpp',     # dsdistance Element
   'src/gstdsprotopayload.cpp', # dsprotopayload Element
   'src/gstpayloadbroker.cpp',  # payloadbroker Element
