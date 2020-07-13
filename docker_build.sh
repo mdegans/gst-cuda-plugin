@@ -33,5 +33,5 @@ docker build --pull --rm -f $DOCKERFILE \
     --build-arg DSFILTER_TAG=${DSFILTER_TAG} \
     --build-arg AUTHOR=${AUTHOR} \
     -t $TAG_FULL \
+    -t "$TAG_BASE:$TAG_SUFFIX" \
     $THIS_DIR $@
-docker tag "$TAG_FULL" "$TAG_BASE:$TAG_SUFFIX"
